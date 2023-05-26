@@ -1,30 +1,45 @@
 package render
 
 import (
-	"fmt"
+	"GoLangHTTP/pkg/config"
+	"bytes"
 	"html/template"
 	"log"
 	"net/http"
 	"path/filepath"
 )
 
+var app *config.AppConfig
+
+func NewTemplate(a *config.AppConfig) {
+	app = a
+}
+
 func RenderTemplate(w http.ResponseWriter, tmpl string) {
-	// Create tempalte cache
-	tc, err := createTemplateCache()
-	if err != nil {
-		log.Fatal(err)
+	// get the template cache from the config
+	var tc map[string]*template.Template
+	if app.UseCache {
+		tc = app.TemplateCache
+	} else {
+		tc, _ = CreateTemplateCache()
 	}
+
 	// Get requested template from cache
+	t, ok := tc[tmpl]
+	if !ok {
+		log.Fatal("could not get template from template")
+	}
 
-	// render the template
+	buf := new(bytes.Buffer)
 
-	parsedTemplate, _ := template.ParseFiles("./templates/"+tmpl, "./templates/base.layout.tmpl")
-	err := parsedTemplate.Execute(w, nil)
+	_ = t.Execute(buf, nil)
+
+	_, err := buf.WriteTo(w)
 	if err != nil {
-		fmt.Println("error parsing template", err)
+		log.Println(err)
 	}
 }
-func createTemplateCache() (map[string]*template.Template, error) {
+func CreateTemplateCache() (map[string]*template.Template, error) {
 	// myCache := make(map[string]*template.Template)
 	myCache := map[string]*template.Template{}
 
@@ -57,5 +72,5 @@ func createTemplateCache() (map[string]*template.Template, error) {
 		myCache[name] = ts
 	}
 
-	return nil, err
+	return myCache, nil
 }
